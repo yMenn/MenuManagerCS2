@@ -1,83 +1,65 @@
 ﻿using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Menu;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using MenuManagerApi;
 
-namespace MenuManager
+namespace MenuManagerCore;
+
+public class MenuInstance(string _title, Action<CCSPlayerController> _back_action, MenuType _forcetype = MenuType.Default) : IMenu
 {
-    public class MenuInstance : IMenu
+    readonly Action<CCSPlayerController> BackAction = _back_action;
+
+    MenuType forcetype = _forcetype;
+
+    public string Title { get; set; } = _title;
+
+    public List<ChatMenuOption> MenuOptions { get; } = [];
+
+    public bool ExitButton { get; set; } = true;
+
+    public PostSelectAction PostSelectAction { get; set; } = PostSelectAction.Nothing;
+
+    public ChatMenuOption AddMenuOption(string display, Action<CCSPlayerController, ChatMenuOption> onSelect, bool disabled = false)
     {
-        Action<CCSPlayerController> BackAction;
+        var option = new ChatMenuOption(display, disabled, (player, opt) => { onSelect(player, opt); });
+        MenuOptions.Add(option);
+        return option;            
+    }
 
-        MenuType forcetype;
+    private void OnBackAction(CCSPlayerController player, ChatMenuOption option)
+    {
+        BackAction(player);
+    }
 
-        public MenuInstance(string _title, Action<CCSPlayerController> _back_action = null, MenuType _forcetype = MenuType.Default)
+    public void Open(CCSPlayerController player)
+    {
+        if (forcetype == MenuType.Default)
+            forcetype = Misc.GetCurrentPlayerMenu(player);
+
+        IMenu menu = forcetype switch
         {
-            Title = _title;
-            ExitButton = true;
-            MenuOptions = new List<ChatMenuOption>();
-            BackAction = _back_action;
-            forcetype = _forcetype;
-        }
+            MenuType.ChatMenu => new ChatMenu(Title),
+            MenuType.ConsoleMenu => new ConsoleMenu(Title),
+            MenuType.CenterMenu => new CenterHtmlMenu(Title, Control.GetPlugin() ?? throw new Exception("Plugin is not loaded")),
+            MenuType.ButtonMenu => new ButtonMenu(Title),
+            _ => new ChatMenu(Title),
+        };
 
-        public string Title {get;set;}
-                
-        public List<ChatMenuOption> MenuOptions { get; }
+        menu.ExitButton = ExitButton;
+        menu.PostSelectAction = PostSelectAction;            
 
-        public bool ExitButton { get; set; }
+        if (BackAction != null)
+            menu.AddMenuOption(Control.GetPlugin()?.Localizer["menumanager.back"] ?? "Back", OnBackAction);
 
-        public PostSelectAction PostSelectAction { get; set; } = PostSelectAction.Nothing;
+        foreach(var option in MenuOptions)
+            menu.AddMenuOption(option.Text, option.OnSelect, option.Disabled);
 
-        public ChatMenuOption AddMenuOption(string display, Action<CCSPlayerController, ChatMenuOption> onSelect, bool disabled = false)
-        {
-            var option = new ChatMenuOption(display, disabled, (player, opt) => { onSelect(player, opt); });
-            MenuOptions.Add(option);
-            return option;            
-        }
+        //Control.AddMenu(player, this, forcetype);
+        menu.Open(player);
+    }
 
-        private void OnBackAction(CCSPlayerController player, ChatMenuOption option)
-        {
-            if (Control.GetPlugin().Config.SoundBack != "")
-                Control.PlaySound(player, Control.GetPlugin().Config.SoundBack);
-            BackAction(player);
-        }
-
-        public void Open(CCSPlayerController player)
-        {
-
-            IMenu menu = null;
-
-            if (forcetype == MenuType.Default)
-                forcetype = Misc.GetCurrentPlayerMenu(player);
-
-            switch (forcetype)
-            {
-                case MenuType.ChatMenu: menu = new ChatMenu(Title); break;
-                case MenuType.ConsoleMenu: menu = new ConsoleMenu(Title);  break;
-                case MenuType.CenterMenu: menu = new CenterHtmlMenu(Title, Control.GetPlugin()); break;
-                case MenuType.ButtonMenu: menu = new ButtonMenu(Title);  break;
-            }
-
-            menu.ExitButton = ExitButton;
-            menu.PostSelectAction = PostSelectAction;            
-
-            if (BackAction != null)
-                menu.AddMenuOption(Control.GetPlugin().Localizer["menumanager.back"], OnBackAction);
-
-            foreach(var option in MenuOptions)
-                menu.AddMenuOption(option.Text, option.OnSelect, option.Disabled);
-            
-            menu.Open(player);
-
-        }
-
-        public void OpenToAll()
-        {
-            foreach (var player in Misc.GetValidPlayers())
-                Open(player);
-        }
+    public void OpenToAll()
+    {
+        foreach (var player in Misc.GetValidPlayers())
+            Open(player);
     }
 }

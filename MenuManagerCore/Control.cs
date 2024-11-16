@@ -1,129 +1,117 @@
 ﻿using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Entities;
-using CounterStrikeSharp.API.Modules.Menu;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using MenuManagerCore;
 
-namespace MenuManager
+
+namespace MenuManagerCore;
+internal static class Control
 {
-    internal static class Control
+    public static List<PlayerInfo> menus = [];
+    private static BasePlugin? hPlugin;
+
+    public static void AddMenu(CCSPlayerController player, ButtonMenu inst)
     {
-        public static List<PlayerInfo> menus = new List<PlayerInfo>();
-        private static MenuManagerCore hPlugin;
+        for(int i = 0; i < menus.Count; i++)
+            if (menus[i].GetPlayer() == player)
+            {
+                menus.Remove(menus[i]);
+                i++;
+            }
 
-        public static void AddMenu(CCSPlayerController player, ButtonMenu inst)
+        var menu = new PlayerInfo(player, inst);
+        player.Freeze();
+        menus.Add(menu);
+    }
+
+    public static void AddMenuAll(ButtonMenu inst)
+    {
+        var players = Utilities.GetPlayers();
+        foreach (var player in players)
         {
+            if(player != null && player.IsValid && !player.IsBot && !player.IsHLTV && player.Connected == PlayerConnectedState.PlayerConnected)
+                AddMenu(player, inst);
+        }
+    }
+
+    public static void Clear()
+    {            
+        menus.RemoveAll(x => true);
+    }
+
+    public static void OnPluginTick()
+    {
+        if(menus.Count > 0)
+        {
+            //foreach(var menu in menus)
             for(int i = 0; i < menus.Count; i++)
-                if (menus[i].GetPlayer() == player)
+            {
+                var menu = menus[i];
+                if(menu == null)
                 {
-                    menus.Remove(menus[i]);
-                    i++;
+                    menus.RemoveAt(i);
+                    i--;
+                    continue;
                 }
-
-            var menu = new PlayerInfo(player, inst);
-            menus.Add(menu);
-        }
-
-        public static void AddMenuAll(ButtonMenu inst)
-        {
-            var players = Utilities.GetPlayers();
-            foreach (var player in players)
-            {
-                if(player != null && player.IsValid && !player.IsBot && !player.IsHLTV && player.Connected == PlayerConnectedState.PlayerConnected)
-                    AddMenu(player, inst);
-            }
-        }
-
-        public static void Clear()
-        {            
-            menus.RemoveAll(x => true);
-        }
-
-        public static void OnPluginTick()
-        {
-            if(menus.Count > 0)
-            {
-                //foreach(var menu in menus)
-                for(int i = 0; i < menus.Count; i++)
+                var player = menu.GetPlayer();
+                if(!Misc.IsValidPlayer(player))
                 {
-                    var menu = menus[i];
-                    if(menu == null)
+                    menus.RemoveAt(i);
+                    i--;
+                    continue;
+                }
+                var buttons = player.Buttons;
+                // player.PlayerPawn.Value.VelocityModifier = 0.0f;
+                // For ButtonMenu
+                //menu.GetPlayer().PrintToChat("Вот тебе меню .!.");
+                
+                if (!menu.IsEqualButtons(buttons.ToString()))
+                {
+
+                    if (buttons.HasFlag(PlayerButtons.Forward))
+                        menu.MoveUp();
+                    else if (buttons.HasFlag(PlayerButtons.Back))
+                        menu.MoveDown();
+                    else if (buttons.HasFlag(PlayerButtons.Moveleft))
+                        menu.MoveUp(7);
+                    else if (buttons.HasFlag(PlayerButtons.Moveright))
+                        menu.MoveDown(7);
+                    else if (buttons.HasFlag(PlayerButtons.Use))
+                        menu.OnSelect();
+
+                    if (buttons.HasFlag(PlayerButtons.Reload) || menu.Closed())
                     {
+                        player.Unfreeze();
                         menus.RemoveAt(i);
                         i--;
                         continue;
                     }
-                    var player = menu.GetPlayer();
-                    if(!Misc.IsValidPlayer(player))
-                    {
-                        menus.RemoveAt(i);
-                        i--;
-                        continue;
-                    }
-                    var buttons = player.Buttons;
-                    player.PlayerPawn.Value.VelocityModifier = 0.0f;
-                    // For ButtonMenu
-                    //menu.GetPlayer().PrintToChat("Вот тебе меню .!.");
-
-                    
-                    if (!menu.IsEqualButtons(buttons.ToString()))
-                    {
-
-                        if (buttons.HasFlag(PlayerButtons.Forward))
-                            menu.MoveUp();
-                        else if (buttons.HasFlag(PlayerButtons.Back))
-                            menu.MoveDown();
-                        else if (buttons.HasFlag(PlayerButtons.Moveleft))
-                            menu.MoveUp(7);
-                        else if (buttons.HasFlag(PlayerButtons.Moveright))
-                            menu.MoveDown(7);
-                        else if (buttons.HasFlag(PlayerButtons.Use))
-                            menu.OnSelect();
-
-                        if (buttons.HasFlag(PlayerButtons.Reload) || menu.Closed())
-                        {
-                            menu.Close(true);
-                            player.PlayerPawn.Value.VelocityModifier = menu.GetMod();
-                            menus.RemoveAt(i);
-                            i--;
-                            continue;
-                        }
-                    }
-
-                    menu.GetPlayer().PrintToCenterHtml(menu.GetText());
                 }
+
+                menu.GetPlayer().PrintToCenterHtml(menu.GetText());
             }
         }
+    }
 
-        public static void PlaySound(CCSPlayerController player, string sound)
+    public static void CloseMenu(CCSPlayerController player)
+    {
+        CounterStrikeSharp.API.Modules.Menu.MenuManager.CloseActiveMenu(player);
+        for (int i = 0; i < menus.Count; i++)
         {
-            player.ExecuteClientCommand("play " + sound);
-        }
-
-        public static void CloseMenu(CCSPlayerController player)
-        {
-            CounterStrikeSharp.API.Modules.Menu.MenuManager.CloseActiveMenu(player);
-            for (int i = 0; i < menus.Count; i++)
+            if (menus[i].GetPlayer() == player)
             {
-                if (menus[i].GetPlayer() == player)
-                {
-                    menus[i].Close();
-                }
-            }            
-        }
-        
-        internal static void Init(MenuManagerCore _hPlugin)
-        {
-            hPlugin = _hPlugin;
-        }
+                player.Unfreeze();
+                menus[i].Close();
+            }
+        }            
+    }
+    
+    internal static void Init(BasePlugin _hPlugin)
+    {
+        hPlugin = _hPlugin;
+    }
 
-        internal static MenuManagerCore GetPlugin()
-        {
-            return hPlugin;
-        }
+    internal static BasePlugin? GetPlugin()
+    {
+        return hPlugin;
     }
 }

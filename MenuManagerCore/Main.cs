@@ -1,42 +1,21 @@
-﻿using CounterStrikeSharp.API;
-using CounterStrikeSharp.API.Core;
+﻿using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Core.Capabilities;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Menu;
-using Microsoft.Extensions.Logging;
+using MenuManagerApi;
 using PlayerSettings;
-using System.Text.Json.Serialization;
 
+namespace MenuManagerCore;
 
-namespace MenuManager;
-public class PluginConfig : BasePluginConfig
-{
-    [JsonPropertyName("DefaultMenu")] public string DefaultMenu { get; set; } = "ButtonMenu";
-    [JsonPropertyName("SoundScroll")] public string SoundScroll { get; set; } = "";
-    [JsonPropertyName("SoundClick")] public string SoundClick { get; set; } = "";
-    [JsonPropertyName("SoundDisabled")] public string SoundDisabled { get; set; } = "";
-    [JsonPropertyName("SoundBack")] public string SoundBack { get; set; } = "";
-    [JsonPropertyName("SoundExit")] public string SoundExit { get; set; } = "";
-}
-
-public class MenuManagerCore : BasePlugin, IPluginConfig<PluginConfig>
+public class MenuManagerCore : BasePlugin
 {
     public override string ModuleName => "MenuManager [Core]";
-    public override string ModuleVersion => "0.9";
-    public override string ModuleAuthor => "Nick Fox";
+    public override string ModuleVersion => "0.7.2";
+    public override string ModuleAuthor => "Nick Fox, forked by menn";
     public override string ModuleDescription => "All menus interacts in one core";
 
-    public PluginConfig Config { get; set; }
-
-    public void OnConfigParsed(PluginConfig config)
-    {
-        Config = config;
-
-        Misc.SetDefaultMenu(Config.DefaultMenu);
-    }
-
-    private IMenuApi? _api;
+    private CMenuApi? _api;
     private ISettingsApi? _settings;
     private readonly PluginCapability<IMenuApi?> _pluginCapability = new("menu:nfcore");
     private readonly PluginCapability<ISettingsApi?> _settingsCapability = new("settings:nfcore");
@@ -49,10 +28,15 @@ public class MenuManagerCore : BasePlugin, IPluginConfig<PluginConfig>
         RegisterListener<Listeners.OnTick>(Control.OnPluginTick);
     }
 
+
     public override void OnAllPluginsLoaded(bool hotReload)
     {
         _settings = _settingsCapability.Get();
-        if (_settings == null) Console.WriteLine("PlayerSettings core not found...");
+        if (_settings == null)
+        {
+            Console.WriteLine("PlayerSettings core not found...");
+            throw new Exception("PlayerSettings core not found...");
+        }
         Misc.SetSettingApi(_settings);
     }
 
@@ -63,9 +47,9 @@ public class MenuManagerCore : BasePlugin, IPluginConfig<PluginConfig>
     [ConsoleCommand("css_menus", "Choose menu type")]
     public void OnCommand(CCSPlayerController? player, CommandInfo command)
     {
-        if (player != null)
+        if (player != null && player.IsValid && _api != null)
         {
-            var menu = _api.NewMenu(Localizer["menumanager.select_type"]);
+            var menu = _api.NewMenu(Localizer["menumanager.select_type"], (_) => { });
             menu.PostSelectAction = PostSelectAction.Close;
             menu.AddMenuOption(Localizer["menumanager.console"], (player, option) => { Misc.SelectPlayerMenu(player, MenuType.ConsoleMenu); });
             menu.AddMenuOption(Localizer["menumanager.chat"], (player, option) => { Misc.SelectPlayerMenu(player, MenuType.ChatMenu); });

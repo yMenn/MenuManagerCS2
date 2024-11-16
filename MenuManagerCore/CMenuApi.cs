@@ -1,42 +1,31 @@
 ﻿using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Menu;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using MenuManager;
+using MenuManagerApi;
 
-namespace MenuManager
+namespace MenuManagerCore;
+
+internal class CMenuApi(MenuManagerCore _plugin) : IMenuApi
 {
-    internal class CMenuApi: IMenuApi
+    readonly MenuManagerCore plugin = _plugin;
+
+    public IMenu NewMenu(string title, Action<CCSPlayerController> back_action)
     {
-        MenuManagerCore plugin;
-        //public CApi(BasePlugin _plugin)
-        public CMenuApi(MenuManagerCore _plugin)
-        {
-            plugin = _plugin;
-        }
-
-        public IMenu NewMenu(string title, Action<CCSPlayerController> back_action = null)
-        {
-            return new MenuInstance(title, back_action);
-        }
-
-        public IMenu NewMenuForcetype(string title, MenuType type, Action<CCSPlayerController> back_action = null)
-        {
-            return new MenuInstance(title, back_action, type);
-        }
-
-        public void CloseMenu(CCSPlayerController player)
-        {
-            Control.CloseMenu(player);
-        }
-
-        public MenuType GetMenuType(CCSPlayerController player)
-        {
-            return Misc.GetCurrentPlayerMenu(player);
-        }
-       
+        return new MenuInstance(title, back_action);
     }
+
+    public IMenu NewMenuForcetype(string title, MenuType type, Action<CCSPlayerController> back_action)
+    {
+        return new MenuInstance(title, back_action, type);
+    }
+
+    public void CloseMenu(CCSPlayerController player)
+    {
+        Control.CloseMenu(player);
+    }
+
+    public MenuType GetMenuType(CCSPlayerController player)
+    {
+        return Misc.GetCurrentPlayerMenu(player);
+    }
+    
 }

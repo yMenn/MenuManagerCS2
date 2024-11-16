@@ -3,7 +3,7 @@ using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Core.Capabilities;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Menu;
-using MenuManagerApi;
+using MenuManager;
 using PlayerSettings;
 
 namespace MenuManagerCore;

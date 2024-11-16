@@ -1,6 +1,6 @@
 ﻿using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Menu;
-using MenuManagerApi;
+using MenuManager;
 
 namespace MenuManagerCore;
 

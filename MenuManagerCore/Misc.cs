@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using PlayerSettings;
-using MenuManagerApi;
+using MenuManager;
 
 
 namespace MenuManagerCore;

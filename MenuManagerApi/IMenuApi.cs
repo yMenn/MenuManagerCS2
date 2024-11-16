@@ -1,7 +1,7 @@
 ﻿using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Menu;
 
-namespace MenuManagerApi;
+namespace MenuManager;
 
 public interface IMenuApi
 {
